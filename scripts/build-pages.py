@@ -18,7 +18,7 @@ STYLE='''
 '''
 STYLE += '\n:root{overflow-wrap:anywhere}select{width:100%;min-width:0;min-height:58px;font:700 21px/1.45 Inter,"Segoe UI",Arial,sans-serif;padding:14px;border:1px solid var(--line);border-radius:13px;color:var(--ink);background:var(--paper);margin-bottom:18px}#review-plan{font-size:22px;line-height:1.55;max-height:300px;overflow:auto}#review-panel pre{max-height:190px}#configuration-content{white-space:pre-wrap!important;overflow-wrap:anywhere}\n'
 (PUBLIC/'style.css').write_text(STYLE,encoding='utf-8')
-(PUBLIC/'navigation.js').write_text('''(()=>{const key="agent-sdk-lesson29-theme";try{document.documentElement.dataset.theme=localStorage.getItem(key)||"light"}catch{}const b=document.getElementById("theme");function label(){b.textContent=document.documentElement.dataset.theme==="dark"?"Light mode":"Dark mode"}label();b.onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"light":"dark";try{localStorage.setItem(key,document.documentElement.dataset.theme)}catch{}label()}})();''',encoding='utf-8')
+(PUBLIC/'navigation.js').write_text('''(()=>{const key="agent-sdk-lesson30-theme";try{document.documentElement.dataset.theme=localStorage.getItem(key)||"light"}catch{}const b=document.getElementById("theme");function label(){b.textContent=document.documentElement.dataset.theme==="dark"?"Light mode":"Dark mode"}label();b.onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="dark"?"light":"dark";try{localStorage.setItem(key,document.documentElement.dataset.theme)}catch{}label()}})();''',encoding='utf-8')
 
 # Bundle renderer assets so responses format without a CDN connection.
 for source,name in [
