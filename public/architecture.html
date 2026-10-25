@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent SDK LESSON 29 · Architecture and &lt;em&gt;UML workflow.&lt;/em&gt;</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/code-highlighting.css"></head><body><main><div class="brand"><a href="/">How <span>Claude Agent SDK</span> Works</a><span class="badge">LESSON 29 / PERMISSION MODES</span></div><header class="hero"><div><div class="eyebrow">COMPARE · REVIEW · SWITCH</div><h1>Architecture and <em>UML workflow.</em></h1><p class="lead">Every workflow step includes its corresponding coloured code excerpt.</p></div><img src="/astronaut.png" alt="Course astronaut mascot"></header><nav class="nav" aria-label="Application sections"><a href="/">Application lab</a><a href="/learn.html">What you will learn</a><a href="/run.html">How to run</a><a href="/architecture.html" aria-current="page">Architecture & workflow</a><a href="/walkthrough.html">Code walkthrough</a><button id="theme" type="button">Dark mode</button></nav><p class="note">The callback waits for an explicit reviewer decision. SSE carries requests to the browser; POST resolves a single pending promise. The workflow groups alternative responses, not all branches of one call.</p><a class="button" href="/architecture.svg" download>Download UML SVG</a><div class="diagram"><img src="/architecture.svg" alt="Thirteen approval UI workflow steps"></div><section class="step workflow-step" id="workflow-step-01"><span class="number">01</span><h3>1. Validate the classroom task</h3><p>The host accepts a fixed task name and prediction. Browser input cannot replace the SDK configuration or introduce arbitrary filesystem operations.</p><p class="source">Source: src/modes.ts · lines 33–39 · selected source; surrounding code omitted</p><pre><code class="language-typescript">export function validateConfig(value: unknown): RunConfig {
+  if (
+    !value ||
+    typeof value !== &quot;object&quot; ||
+    Array.isArray(value) ||
+    !MODES.includes((value as RunConfig).mode)
+  )</code></pre></section><section class="step workflow-step" id="workflow-step-02"><span class="number">02</span><h3>2. Create an isolated lab workspace</h3><p>Create disposable project, home and SDK directories. The immutable fixture and output files are checked independently before bounded cleanup.</p><p class="source">Source: src/workspace.ts · lines 13–19 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const root = resolve(parent, randomUUID()),
+    cwd = join(root, &quot;project&quot;),
+    home = join(root, &quot;home&quot;),
+    sdkHome = join(root, &quot;sdk&quot;);
+  const r = relative(parent, root);
+  if (!r || r.startsWith(&quot;..&quot;) || isAbsolute(r))
+    throw new Error(&quot;Invalid classroom workspace.&quot;);</code></pre></section><section class="step workflow-step" id="workflow-step-03"><span class="number">03</span><h3>3. Start a streaming SDK query</h3><p>One query owns the real model/tool loop. The streaming input stays alive so a later redirect can send a distinct user instruction without starting a second session.</p><p class="source">Source: src/agent.ts · lines 331–333 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const active = query({ prompt: input(), options });
+    run = active;
+    try {</code></pre></section><section class="step workflow-step" id="workflow-step-04"><span class="number">04</span><h3>4. Receive a real permission callback</h3><p>An unresolved tool request reaches canUseTool with its real input and context. Earlier allow rules can bypass this callback, as shown by the pre-approved comparison.</p><p class="source">Source: src/agent.ts · lines 193–200 · selected source; surrounding code omitted</p><pre><code class="language-typescript">canUseTool: async (toolName, input, context) =&gt; {
+      record({
+        phase: &quot;callback&quot;,
+        tool: toolName,
+        decision: &quot;waiting for reviewer&quot;,
+        turn,
+      });
+      const proposed = sessionSuggestions(</code></pre></section><section class="step workflow-step" id="workflow-step-05"><span class="number">05</span><h3>5. Register the pending resolver before SSE</h3><p>Register the single-use resolver before emitting the request. This prevents a fast browser click from arriving before a pending entry exists.</p><p class="source">Source: src/approvals.ts · lines 67–76 · selected source; surrounding code omitted</p><pre><code class="language-typescript">pending.set(id, { settle, rememberAvailable: details.rememberAvailable });
+    timer = setTimeout(abort, timeoutMs);
+    signal.addEventListener(&quot;abort&quot;, abort, { once: true });
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    // Register the resolver before sending SSE, avoiding a fast-click race.
+    emit({
+      type: &quot;approval-request&quot;,</code></pre></section><section class="step workflow-step" id="workflow-step-06"><span class="number">06</span><h3>6. Send and render the SSE request</h3><p>The browser receives the SSE data event and displays the actual tool, arguments, tool-use identifier, deadline and file state. Display alone does not approve execution.</p><p class="source">Source: src/client.ts · lines 38–45 · selected source; surrounding code omitted</p><pre><code class="language-typescript">if (e.type === &quot;approval-request&quot;) {
+    approvalId = e.id;
+    $(&quot;review-panel&quot;).hidden = false;
+    json(&quot;approval-input&quot;, {
+      toolName: e.toolName,
+      input: e.input,
+      toolUseID: e.toolUseID,
+      fileBeforeApproval: e.fileBeforeApproval,</code></pre></section><section class="step workflow-step" id="workflow-step-07"><span class="number">07</span><h3>7. POST the reviewer decision</h3><p>The browser posts an approval ID and action. Edited content has a bounded length; the server chooses the fixed reviewed output path.</p><p class="source">Source: src/client.ts · lines 11–18 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const response = await fetch(&quot;/api/approve&quot;, {
+    method: &quot;POST&quot;,
+    headers: { &quot;Content-Type&quot;: &quot;application/json&quot; },
+    body: JSON.stringify({
+      id: approvalId,
+      action,
+      content: ($(&quot;edited-content&quot;) as HTMLTextAreaElement).value,
+    }),</code></pre></section><section class="step workflow-step" id="workflow-step-08"><span class="number">08</span><h3>8. Resolve one pending approval</h3><p>Reject missing or replayed IDs and unavailable remember choices. Settling removes the pending entry and cancels timeout and abort listeners.</p><p class="source">Source: src/approvals.ts · lines 44–50 · selected source; surrounding code omitted</p><pre><code class="language-typescript">export function resolveApproval(id: string, decision: Decision) {
+  const item = pending.get(id);
+  if (!item || (decision.action === &quot;remember&quot; &amp;&amp; !item.rememberAvailable))
+    return false;
+  item.settle(decision);
+  return true;
+}</code></pre></section><section class="step workflow-step" id="workflow-step-09"><span class="number">09</span><h3>9. Approve with validated changes</h3><p>The host rewrites the Write path to reviewed.txt and inserts edited content. Validate the resulting request again before returning allow and updatedInput.</p><p class="source">Source: src/agent.ts · lines 241–248 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const updatedInput = {
+          ...input,
+          file_path: join(workspace.cwd, &quot;reviewed.txt&quot;),
+          content: decision.content ?? &quot;REVIEWED-30\n&quot;,
+        };
+        returned = hostAllows(workspace.cwd, toolName, updatedInput)
+          ? { behavior: &quot;allow&quot;, updatedInput }
+          : {</code></pre></section><section class="step workflow-step" id="workflow-step-10"><span class="number">10</span><h3>10. Remember an SDK-derived session rule</h3><p>Eligible actual SDK acceptEdits or Write addRules suggestions become session-scoped updates. Honour suppressAlwaysAllowRule. The host guard still bounds every tool, even after a permission update.</p><p class="source">Source: src/agent.ts · lines 253–260 · selected source; surrounding code omitted</p><pre><code class="language-typescript">permissionUpdates.push(...proposed);
+        returned = {
+          behavior: &quot;allow&quot;,
+          updatedInput: input,
+          updatedPermissions: proposed,
+        };
+      } else if (decision.action === &quot;approve&quot;)
+        returned = { behavior: &quot;allow&quot;, updatedInput: input };</code></pre></section><section class="step workflow-step" id="workflow-step-11"><span class="number">11</span><h3>11. Reject or suggest an alternative</h3><p>A deny result explains the refusal. Suggest includes read-only guidance, while redirect asks the model to end this turn and await a separate user instruction.</p><p class="source">Source: src/agent.ts · lines 262–269 · selected source; surrounding code omitted</p><pre><code class="language-typescript">redirectRequested = decision.action === &quot;redirect&quot;;
+        returned = {
+          behavior: &quot;deny&quot;,
+          message:
+            decision.action === &quot;suggest&quot;
+              ? &quot;Do not write. Instead, Read lesson.txt and explain the APPROVAL-30 marker briefly.&quot;
+              : redirectRequested
+                ? &quot;Do not write. End this turn and await a separate user instruction.&quot;</code></pre></section><section class="step workflow-step" id="workflow-step-12"><span class="number">12</span><h3>12. Send a distinct redirected task</h3><p>After the first actual result, release a new input message on the same Query. Keep the two result/session identifiers to prove the continuity.</p><p class="source">Source: src/agent.ts · lines 394–402 · selected source; surrounding code omitted</p><pre><code class="language-typescript">redirectSent = true;
+            turn = 2;
+            emit({
+              type: &quot;redirect&quot;,
+              instruction: redirectInstruction,
+              sessionId: message.session_id,
+            });
+            release();
+            continue;</code></pre></section><section class="step workflow-step" id="workflow-step-13"><span class="number">13</span><h3>13. Verify outputs and clean pending state</h3><p>Inspect result.txt, reviewed.txt, second.txt and the unchanged fixture. Compare actual callback counts, returned permissions, cancellation and pending-count evidence.</p><p class="source">Source: src/agent.ts · lines 417–425 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const files = await workspace.inspect();
+    const observedOutcome = completed.length
+      ? nativeErrors
+        ? &quot;mixed&quot;
+        : &quot;execute&quot;
+      : &quot;block&quot;;
+    const evidence: Evidence = {
+      mode: c.mode,
+      prediction: c.prediction,</code></pre></section><footer>CLAUDE AGENT SDK · LESSON 29 · MODES · CALLBACKS · LIVE SWITCH<br>TypeScript · local runtime · API key stays on the server</footer></main><script src="/navigation.js"></script><script src="/prism.js"></script><script src="/prism-markup.min.js"></script><script src="/prism-yaml.min.js"></script><script src="/prism-markdown.min.js"></script><script src="/prism-python.min.js"></script><script src="/code-highlighting.js"></script><script src="/marked.umd.js"></script><script src="/purify.min.js"></script></body></html>

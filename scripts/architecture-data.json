@@ -1,0 +1,273 @@
+{
+  "lanes": [
+    "Student UI",
+    "TypeScript host",
+    "Agent SDK",
+    "Approval broker",
+    "Lab files"
+  ],
+  "arrows": [
+    [
+      0,
+      1,
+      "1. Validate the classroom task"
+    ],
+    [
+      1,
+      4,
+      "2. Create an isolated lab workspace"
+    ],
+    [
+      1,
+      2,
+      "3. Start a streaming SDK query"
+    ],
+    [
+      2,
+      1,
+      "4. Receive a real permission callback"
+    ],
+    [
+      1,
+      3,
+      "5. Register the pending resolver before SSE"
+    ],
+    [
+      1,
+      0,
+      "6. Send and render the SSE request"
+    ],
+    [
+      0,
+      1,
+      "7. POST the reviewer decision"
+    ],
+    [
+      1,
+      3,
+      "8. Resolve one pending approval"
+    ],
+    [
+      1,
+      2,
+      "9. Approve with validated changes"
+    ],
+    [
+      1,
+      2,
+      "10. Remember an SDK-derived session rule"
+    ],
+    [
+      1,
+      2,
+      "11. Reject or suggest an alternative"
+    ],
+    [
+      1,
+      2,
+      "12. Send a distinct redirected task"
+    ],
+    [
+      4,
+      1,
+      "13. Verify outputs and clean pending state"
+    ]
+  ],
+  "steps": [
+    {
+      "number": 1,
+      "title": "Validate the classroom task",
+      "source": "src/modes.ts",
+      "code": "export function validateConfig(value: unknown): RunConfig {\n  if (\n    !value ||\n    typeof value !== \"object\" ||\n    Array.isArray(value) ||\n    !MODES.includes((value as RunConfig).mode)\n  )",
+      "language": "typescript",
+      "explanation": "The host accepts a fixed task name and prediction. Browser input cannot replace the SDK configuration or introduce arbitrary filesystem operations.",
+      "firstLine": 33,
+      "lastLine": 39,
+      "anchors": [
+        "export function validateConfig(value: unknown): RunConfig {"
+      ],
+      "sourceSHA256": "8f501ff9e1979f965859b857671a85af508254e4ad430cb75ff39ec10787a9db",
+      "narration": "Step 1. The host accepts a fixed task name and prediction. Browser input cannot replace the SDK configuration or introduce arbitrary filesystem operations. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 2,
+      "title": "Create an isolated lab workspace",
+      "source": "src/workspace.ts",
+      "code": "const root = resolve(parent, randomUUID()),\n    cwd = join(root, \"project\"),\n    home = join(root, \"home\"),\n    sdkHome = join(root, \"sdk\");\n  const r = relative(parent, root);\n  if (!r || r.startsWith(\"..\") || isAbsolute(r))\n    throw new Error(\"Invalid classroom workspace.\");",
+      "language": "typescript",
+      "explanation": "Create disposable project, home and SDK directories. The immutable fixture and output files are checked independently before bounded cleanup.",
+      "firstLine": 13,
+      "lastLine": 19,
+      "anchors": [
+        "const root = resolve(parent, randomUUID()),"
+      ],
+      "sourceSHA256": "3db2eb10a472c0c10cd0517c584a78ca3fd9d95218d0487926ec622906ac64e8",
+      "narration": "Step 2. Create disposable project, home and SDK directories. The immutable fixture and output files are checked independently before bounded cleanup. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 3,
+      "title": "Start a streaming SDK query",
+      "source": "src/agent.ts",
+      "code": "const active = query({ prompt: input(), options });\n    run = active;\n    try {",
+      "language": "typescript",
+      "explanation": "One query owns the real model/tool loop. The streaming input stays alive so a later redirect can send a distinct user instruction without starting a second session.",
+      "firstLine": 331,
+      "lastLine": 333,
+      "anchors": [
+        "const active = query({ prompt: input(), options });"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 3. One query owns the real model/tool loop. The streaming input stays alive so a later redirect can send a distinct user instruction without starting a second session. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 4,
+      "title": "Receive a real permission callback",
+      "source": "src/agent.ts",
+      "code": "canUseTool: async (toolName, input, context) => {\n      record({\n        phase: \"callback\",\n        tool: toolName,\n        decision: \"waiting for reviewer\",\n        turn,\n      });\n      const proposed = sessionSuggestions(",
+      "language": "typescript",
+      "explanation": "An unresolved tool request reaches canUseTool with its real input and context. Earlier allow rules can bypass this callback, as shown by the pre-approved comparison.",
+      "firstLine": 193,
+      "lastLine": 200,
+      "anchors": [
+        "canUseTool: async (toolName, input, context) => {"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 4. An unresolved tool request reaches canUseTool with its real input and context. Earlier allow rules can bypass this callback, as shown by the pre-approved comparison. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 5,
+      "title": "Register the pending resolver before SSE",
+      "source": "src/approvals.ts",
+      "code": "pending.set(id, { settle, rememberAvailable: details.rememberAvailable });\n    timer = setTimeout(abort, timeoutMs);\n    signal.addEventListener(\"abort\", abort, { once: true });\n    if (signal.aborted) {\n      abort();\n      return;\n    }\n    // Register the resolver before sending SSE, avoiding a fast-click race.\n    emit({\n      type: \"approval-request\",",
+      "language": "typescript",
+      "explanation": "Register the single-use resolver before emitting the request. This prevents a fast browser click from arriving before a pending entry exists.",
+      "firstLine": 67,
+      "lastLine": 76,
+      "anchors": [
+        "pending.set(id, { settle, rememberAvailable: details.rememberAvailable });"
+      ],
+      "sourceSHA256": "56ef26179f230e2781d782bba212de95274b6c6d6b33ddd3ed4ba9ed4a93c46c",
+      "narration": "Step 5. Register the single-use resolver before emitting the request. This prevents a fast browser click from arriving before a pending entry exists. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 6,
+      "title": "Send and render the SSE request",
+      "source": "src/client.ts",
+      "code": "if (e.type === \"approval-request\") {\n    approvalId = e.id;\n    $(\"review-panel\").hidden = false;\n    json(\"approval-input\", {\n      toolName: e.toolName,\n      input: e.input,\n      toolUseID: e.toolUseID,\n      fileBeforeApproval: e.fileBeforeApproval,",
+      "language": "typescript",
+      "explanation": "The browser receives the SSE data event and displays the actual tool, arguments, tool-use identifier, deadline and file state. Display alone does not approve execution.",
+      "firstLine": 38,
+      "lastLine": 45,
+      "anchors": [
+        "if (e.type === \"approval-request\") {"
+      ],
+      "sourceSHA256": "f5c8c45413ed07bc8d644216bf0ddeb80a3d7dc60ba0db7478a324f1d22dae32",
+      "narration": "Step 6. The browser receives the SSE data event and displays the actual tool, arguments, tool-use identifier, deadline and file state. Display alone does not approve execution. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 7,
+      "title": "POST the reviewer decision",
+      "source": "src/client.ts",
+      "code": "const response = await fetch(\"/api/approve\", {\n    method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({\n      id: approvalId,\n      action,\n      content: ($(\"edited-content\") as HTMLTextAreaElement).value,\n    }),",
+      "language": "typescript",
+      "explanation": "The browser posts an approval ID and action. Edited content has a bounded length; the server chooses the fixed reviewed output path.",
+      "firstLine": 11,
+      "lastLine": 18,
+      "anchors": [
+        "const response = await fetch(\"/api/approve\", {"
+      ],
+      "sourceSHA256": "f5c8c45413ed07bc8d644216bf0ddeb80a3d7dc60ba0db7478a324f1d22dae32",
+      "narration": "Step 7. The browser posts an approval ID and action. Edited content has a bounded length; the server chooses the fixed reviewed output path. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 8,
+      "title": "Resolve one pending approval",
+      "source": "src/approvals.ts",
+      "code": "export function resolveApproval(id: string, decision: Decision) {\n  const item = pending.get(id);\n  if (!item || (decision.action === \"remember\" && !item.rememberAvailable))\n    return false;\n  item.settle(decision);\n  return true;\n}",
+      "language": "typescript",
+      "explanation": "Reject missing or replayed IDs and unavailable remember choices. Settling removes the pending entry and cancels timeout and abort listeners.",
+      "firstLine": 44,
+      "lastLine": 50,
+      "anchors": [
+        "export function resolveApproval(id: string, decision: Decision) {"
+      ],
+      "sourceSHA256": "56ef26179f230e2781d782bba212de95274b6c6d6b33ddd3ed4ba9ed4a93c46c",
+      "narration": "Step 8. Reject missing or replayed IDs and unavailable remember choices. Settling removes the pending entry and cancels timeout and abort listeners. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 9,
+      "title": "Approve with validated changes",
+      "source": "src/agent.ts",
+      "code": "const updatedInput = {\n          ...input,\n          file_path: join(workspace.cwd, \"reviewed.txt\"),\n          content: decision.content ?? \"REVIEWED-30\\n\",\n        };\n        returned = hostAllows(workspace.cwd, toolName, updatedInput)\n          ? { behavior: \"allow\", updatedInput }\n          : {",
+      "language": "typescript",
+      "explanation": "The host rewrites the Write path to reviewed.txt and inserts edited content. Validate the resulting request again before returning allow and updatedInput.",
+      "firstLine": 241,
+      "lastLine": 248,
+      "anchors": [
+        "const updatedInput = {"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 9. The host rewrites the Write path to reviewed.txt and inserts edited content. Validate the resulting request again before returning allow and updatedInput. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 10,
+      "title": "Remember an SDK-derived session rule",
+      "source": "src/agent.ts",
+      "code": "permissionUpdates.push(...proposed);\n        returned = {\n          behavior: \"allow\",\n          updatedInput: input,\n          updatedPermissions: proposed,\n        };\n      } else if (decision.action === \"approve\")\n        returned = { behavior: \"allow\", updatedInput: input };",
+      "language": "typescript",
+      "explanation": "Eligible actual SDK acceptEdits or Write addRules suggestions become session-scoped updates. Honour suppressAlwaysAllowRule. The host guard still bounds every tool, even after a permission update.",
+      "firstLine": 253,
+      "lastLine": 260,
+      "anchors": [
+        "permissionUpdates.push(...proposed);"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 10. Eligible actual SDK acceptEdits or Write addRules suggestions become session-scoped updates. Honour suppressAlwaysAllowRule. The host guard still bounds every tool, even after a permission update. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 11,
+      "title": "Reject or suggest an alternative",
+      "source": "src/agent.ts",
+      "code": "redirectRequested = decision.action === \"redirect\";\n        returned = {\n          behavior: \"deny\",\n          message:\n            decision.action === \"suggest\"\n              ? \"Do not write. Instead, Read lesson.txt and explain the APPROVAL-30 marker briefly.\"\n              : redirectRequested\n                ? \"Do not write. End this turn and await a separate user instruction.\"",
+      "language": "typescript",
+      "explanation": "A deny result explains the refusal. Suggest includes read-only guidance, while redirect asks the model to end this turn and await a separate user instruction.",
+      "firstLine": 262,
+      "lastLine": 269,
+      "anchors": [
+        "redirectRequested = decision.action === \"redirect\";"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 11. A deny result explains the refusal. Suggest includes read-only guidance, while redirect asks the model to end this turn and await a separate user instruction. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 12,
+      "title": "Send a distinct redirected task",
+      "source": "src/agent.ts",
+      "code": "redirectSent = true;\n            turn = 2;\n            emit({\n              type: \"redirect\",\n              instruction: redirectInstruction,\n              sessionId: message.session_id,\n            });\n            release();\n            continue;",
+      "language": "typescript",
+      "explanation": "After the first actual result, release a new input message on the same Query. Keep the two result/session identifiers to prove the continuity.",
+      "firstLine": 394,
+      "lastLine": 402,
+      "anchors": [
+        "redirectSent = true;"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 12. After the first actual result, release a new input message on the same Query. Keep the two result/session identifiers to prove the continuity. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 13,
+      "title": "Verify outputs and clean pending state",
+      "source": "src/agent.ts",
+      "code": "const files = await workspace.inspect();\n    const observedOutcome = completed.length\n      ? nativeErrors\n        ? \"mixed\"\n        : \"execute\"\n      : \"block\";\n    const evidence: Evidence = {\n      mode: c.mode,\n      prediction: c.prediction,",
+      "language": "typescript",
+      "explanation": "Inspect result.txt, reviewed.txt, second.txt and the unchanged fixture. Compare actual callback counts, returned permissions, cancellation and pending-count evidence.",
+      "firstLine": 417,
+      "lastLine": 425,
+      "anchors": [
+        "const files = await workspace.inspect();"
+      ],
+      "sourceSHA256": "47f91377750ef477410f169e78860b5fd59775d7b37b1f2402751782cb9313c0",
+      "narration": "Step 13. Inspect result.txt, reviewed.txt, second.txt and the unchanged fixture. Compare actual callback counts, returned permissions, cancellation and pending-count evidence. This source excerpt shows the corresponding application statement."
+    }
+  ]
+}
